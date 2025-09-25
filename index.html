@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <title>Sudoku</title>
+  <meta name="description" content="Ein schnelles, hübsches Sudoku – offline spielbar und installierbar als App." />
+
+  <!-- PWA: Farben -->
+  <meta name="theme-color" content="#0f172a" />
+  <meta name="background-color" content="#ffffff" />
+
+  <!-- PWA: Manifest -->
+  <link rel="manifest" href="/manifest.webmanifest" />
+
+  <!-- iOS PWA: Standalone + Statusbar + Icon -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon-180.png" />
+
+  <!-- Favicon: 404s unterdrücken -->
+  <link rel="icon" href="data:," />
+
+  <!-- (Optional) Social Preview -->
+  <meta property="og:title" content="Sudoku" />
+  <meta property="og:description" content="Ein schnelles, hübsches Sudoku – offline spielbar und installierbar als App." />
+  <meta property="og:type" content="website" />
+
+  <!-- Basis-Styles (leicht, anpassbar/entfernbar) -->
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #0b1220;
+      --fg: #e5e7eb;
+      --card: #111827;
+      --accent: #22c55e;
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f8fafc;
+        --fg: #0f172a;
+        --card: #ffffff;
+        --accent: #0ea5e9;
+      }
+    }
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background: var(--bg);
+      color: var(--fg);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    .app {
+      min-height: 100%;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+    }
+    header {
+      padding: 16px clamp(16px, 3vw, 32px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: transparent;
+      position: sticky;
+      top: 0;
+      backdrop-filter: blur(6px);
+    }
+    h1 {
+      font-size: clamp(20px, 2.6vw, 28px);
+      margin: 0;
+      letter-spacing: .3px;
+    }
+    main {
+      padding: 16px clamp(16px, 3vw, 32px) max(16px, env(safe-area-inset-bottom));
+      display: grid;
+      place-items: center;
+    }
+    .card {
+      width: min(92vw, 720px);
+      background: var(--card);
+      border-radius: 16px;
+      padding: clamp(16px, 3vw, 28px);
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    }
+    footer {
+      padding: 16px clamp(16px, 3vw, 32px) calc(16px + env(safe-area-inset-bottom));
+      opacity: .8;
+      font-size: 14px;
+      text-align: center;
+    }
+    .ios-install-hint {
+      display: none;
+      text-align: center;
+      padding: 8px 12px;
+      margin: 8px 0 0;
+      border: 1px dashed currentColor;
+      border-radius: 12px;
+      font-size: 14px;
+      opacity: .8;
+    }
+    /* Nur zeigen, wenn NICHT im Standalone/Install-Modus */
+    @media all and (display-mode: browser) {
+      .ios-install-hint { display: block; }
+    }
+
+    /* Platzhalter für dein Sudoku-Grid – entferne, wenn du eigenes CSS nutzt */
+    .placeholder {
+      border: 2px dashed rgba(255,255,255,.2);
+      border-radius: 12px;
+      padding: 24px;
+      text-align: center;
+      opacity: .8;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>Sudoku</h1>
+      <!-- (Optional) Button/Linkleiste -->
+      <!-- <nav><a href="/privacy.html">Datenschutz</a></nav> -->
+    </header>
+
+    <main>
+      <div class="card">
+        <!-- iOS/Android Install-Hinweis (wird im Standalone-Modus automatisch ausgeblendet) -->
+        <div class="ios-install-hint">
+          Tipp: In Safari <strong>Teilen</strong> → <strong>Zum Home-Bildschirm</strong>, um die App zu installieren.
+        </div>
+
+        <!-- 🔽🔽🔽 HIER DEIN SUDOKU EINHÄNGEN 🔽🔽🔽
+             - Wenn du bereits HTML für das Brett hast, füge es hier ein.
+             - Oder binde deine Dateien wie <link rel="stylesheet" href="/styles.css"> und <script src="/main.js" defer></script> ein. -->
+        <div id="app" class="placeholder">
+          <p><strong>Sudoku-App</strong></p>
+          <p>Ersetze diesen Platzhalter durch dein echtes Sudoku-Markup/Script.</p>
+        </div>
+        <!-- 🔼🔼🔼 ENDE DEIN SUDOKU 🔼🔼🔼 -->
+      </div>
+    </main>
+
+    <footer>
+      © <span id="year"></span> Sudoku • Offline spielbar • PWA
+    </footer>
+  </div>
+
+  <noscript>Bitte aktiviere JavaScript, um Sudoku zu spielen.</noscript>
+
+  <!-- (Optional) Deine Assets – auskommentiert als Vorlage -->
+  <!-- <link rel="preload" href="/styles.css" as="style" />
+  <link rel="stylesheet" href="/styles.css" />
+  <script src="/main.js" defer></script> -->
+
+  <!-- Service Worker registrieren -->
+  <script>
+    // Jahreszahl im Footer
+    document.getElementById('year').textContent = new Date().getFullYear();
+
+    // SW-Registrierung
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js")
+          .catch(err => console.error("SW registration failed:", err));
+      });
+    }
+  </script>
+</body>
+</html>
