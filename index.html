@@ -4,15 +4,6 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Sudoku – Browser Edition</title>
-
-<!-- PWA -->
-<meta name="theme-color" content="#0f172a" />
-<link rel="manifest" href="/manifest.webmanifest" />
-<meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-status-bar-style" content="default" />
-<link rel="apple-touch-icon" href="/icons/apple-touch-icon-180.png" />
-<link rel="icon" href="data:," />
-
 <style>
   :root{
     --bg:#0f172a; --panel:#111827; --grid:#0b1220; --line:#1f2937; --text:#e5e7eb; --mute:#9ca3af; --acc:#38bdf8;
@@ -42,11 +33,11 @@
 
   /* Dicke Linien für 3×3 Boxen */
   .cell{ border-right-width:1px; border-bottom-width:1px }
-  .cell:nth-child(9n+1){ border-left-width:3px }
-  .cell:nth-child(-n+9){ border-top-width:3px }
-  .cell:nth-child(3n){ border-right-width:3px }
-  .cell:nth-child(n+19):nth-child(-n+27),
-  .cell:nth-child(n+46):nth-child(-n+54){ border-bottom-width:3px }
+  .cell:nth-child(9n+1){ border-left-width:3px }          /* linke Außenkante jeder Reihe */
+  .cell:nth-child(-n+9){ border-top-width:3px }           /* obere Außenkante */
+  .cell:nth-child(3n){ border-right-width:3px }           /* nach Spalte 3, 6, 9 */
+  .cell:nth-child(n+19):nth-child(-n+27),                 /* nach Zeile 3 */
+  .cell:nth-child(n+46):nth-child(-n+54){ border-bottom-width:3px } /* nach Zeile 6 */
 
   /* Controls */
   .controls{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
@@ -61,9 +52,6 @@
   select{ background:rgba(255,255,255,.06); color:var(--text); border:1px solid rgba(255,255,255,.12); border-radius:10px; padding:8px }
   .stat{ padding:10px; border-radius:12px; border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.03) }
   .timer{ font-variant-numeric:tabular-nums }
-
-  /* Footer */
-  footer{ margin-top:16px; text-align:center; opacity:.8; font-size:14px }
 </style>
 </head>
 <body>
@@ -107,19 +95,10 @@
         <div class="stat">Fehler: <span id="mistakes">0</span></div>
         <div class="stat timer">⏱️ <span id="timer">00:00</span></div>
       </div>
-      <footer>© <span id="year"></span> Sudoku • Offline spielbar • PWA</footer>
     </div>
   </div>
 
 <script>
-/* ===== PWA Helfer ===== */
-document.getElementById('year').textContent = new Date().getFullYear();
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch(console.error);
-  });
-}
-
 /* =====================
    Sudoku Core: Generator, Solver, UI (Ein-Datei)
    ===================== */
@@ -132,9 +111,9 @@ const hintBtn = document.getElementById('hint');
 const mistakesEl = document.getElementById('mistakes');
 const timerEl = document.getElementById('timer');
 
-let cells = [];
+let cells = [];         // DOM cells
 let given = new Array(81).fill(false);
-let grid = new Array(81).fill(0);
+let grid = new Array(81).fill(0); // current values (0 empty)
 let solution = new Array(81).fill(0);
 let notes = Array.from({length:81},()=> new Set());
 let selected = -1;
@@ -142,8 +121,10 @@ let pencil = false;
 let mistakes = 0;
 let timerId = null, startTime = null;
 
+/* ===== Helpers ===== */
 const R = idx => Math.floor(idx/9);
 const C = idx => idx%9;
+const B = (r,c) => Math.floor(r/3)*3 + Math.floor(c/3);
 function peersOf(i){
   const r = R(i), c = C(i);
   const s = new Set();
@@ -153,6 +134,7 @@ function peersOf(i){
   s.delete(i); return [...s];
 }
 
+/* ===== UI Build ===== */
 function buildBoard(){
   boardEl.innerHTML=''; cells = [];
   for(let r=0;r<9;r++){
@@ -168,6 +150,7 @@ function buildBoard(){
   }
 }
 
+/* ===== Rendering ===== */
 function render(){
   cells.forEach((cell,i)=>{
     cell.classList.toggle('selected', i===selected);
@@ -184,10 +167,12 @@ function render(){
       cell.appendChild(wrap);
     }
   });
+  // highlight same numbers
   if(selected!==-1 && grid[selected]){
     const val = grid[selected];
     cells.forEach((cell,i)=>{ if(grid[i]===val) cell.classList.add('same'); });
   }
+  // conflicts
   updateConflicts();
 }
 
@@ -201,6 +186,7 @@ function updateConflicts(){
   }
 }
 
+/* ===== Interaction ===== */
 function select(i){ selected = i; render(); }
 
 function inputNumber(n){
@@ -210,8 +196,14 @@ function inputNumber(n){
   } else {
     if(grid[selected]===n){ grid[selected]=0; }
     else { grid[selected]=n; notes[selected].clear(); }
+    // mistake count if immediate conflict vs. solution (optional configurable)
+    if(solution[selected] && n!==0 && n!==solution[selected]) mistakes++;
+    mistakesEl.textContent = mistakes;
+    // auto-progress: clear same note in peers
+    for(const j of peersOf(selected)) notes[j].delete(n);
   }
-  render(); checkWin();
+  render();
+  checkWin();
 }
 
 function erase(){
@@ -233,54 +225,77 @@ function keyHandler(e){
     select(r*9+c);
   }
 }
+
 document.addEventListener('keydown', keyHandler);
 [...document.querySelectorAll('.num')].forEach(b=> b.addEventListener('click', ()=> inputNumber(parseInt(b.dataset.n,10))));
 eraseBtn.addEventListener('click', erase);
 pencilBtn.addEventListener('click', togglePencil);
 
-/* Timer (optional – aktuell nur Anzeige) */
-function startTimer(){ /* kannst du wieder aktivieren, wenn du möchtest */ }
+/* ===== Timer ===== */
+function startTimer(){
+  stopTimer(); startTime = Date.now();
+  timerId = setInterval(()=>{
+    const s = Math.floor((Date.now()-startTime)/1000);
+    const m = String(Math.floor(s/60)).padStart(2,'0');
+    const r = String(s%60).padStart(2,'0');
+    timerEl.textContent = `${m}:${r}`;
+  }, 1000);
+}
+function stopTimer(){ if(timerId){ clearInterval(timerId); timerId=null; } }
 
-/* Generator & Solver (vereinfacht) */
-function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]] } return a; }
-function Ridx(i){ return Math.floor(i/9) } function Cidx(i){ return i%9 }
+/* ===== Generator & Solver ===== */
+function shuffle(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
+
+function findEmpty(g){ for(let i=0;i<81;i++) if(!g[i]) return i; return -1; }
 function isValid(g, pos, val){
-  const r=Ridx(pos), c=Cidx(pos);
+  const r=R(pos), c=C(pos);
   for(let k=0;k<9;k++){ if(g[r*9+k]===val) return false; if(g[k*9+c]===val) return false; }
   const br=Math.floor(r/3)*3, bc=Math.floor(c/3)*3;
   for(let rr=br; rr<br+3; rr++) for(let cc=bc; cc<bc+3; cc++) if(g[rr*9+cc]===val) return false;
   return true;
 }
-function findEmpty(g){ for(let i=0;i<81;i++) if(!g[i]) return i; return -1; }
-function solve(g){
-  const i=findEmpty(g); if(i===-1) return true;
-  for(const v of shuffle([1,2,3,4,5,6,7,8,9])){ if(isValid(g,i,v)){ g[i]=v; if(solve(g)) return true; g[i]=0; } }
+
+function solve(g){ // returns boolean, fills g in-place
+  const i = findEmpty(g); if(i===-1) return true;
+  const nums = shuffle([1,2,3,4,5,6,7,8,9]);
+  for(const v of nums){ if(isValid(g,i,v)){ g[i]=v; if(solve(g)) return true; g[i]=0; } }
   return false;
 }
-function generateFull(){ const g=new Array(81).fill(0); solve(g); return g; }
+
+function countSolutions(g, limit=2){ // backtracking counter with early stop
+  const i = findEmpty(g); if(i===-1) return 1;
+  let cnt=0; const nums=[1,2,3,4,5,6,7,8,9];
+  for(const v of nums){ if(isValid(g,i,v)){ g[i]=v; cnt += countSolutions(g, limit); if(cnt>=limit) { g[i]=0; return cnt; } g[i]=0; } }
+  return cnt;
+}
+
+function generateFull(){
+  const g = new Array(81).fill(0);
+  // seed diagonal boxes to speed up
+  for(let b=0;b<3;b++){
+    const nums = shuffle([1,2,3,4,5,6,7,8,9]);
+    for(let r=0;r<3;r++) for(let c=0;c<3;c++) g[(b*3+r)*9 + (b*3+c)] = nums[r*3+c];
+  }
+  solve(g); return g;
+}
+
 function digHoles(full, difficulty){
+  // target clues based on difficulty
   const targets = { easy: 40, medium: 32, hard: 26, expert: 22 };
   const clues = targets[difficulty] ?? 32;
   const puzzle = full.slice();
-  const pos = shuffle([...Array(81).keys()]);
-  let removed = 0;
-  for(const i of pos){
-    if(81 - (removed+1) < clues) break;
-    const bak = puzzle[i]; puzzle[i]=0;
+
+  // removal order randomized
+  const positions = shuffle([...Array(81).keys()]);
+  let removed = 0; const maxRemove = 81 - clues;
+  for(const i of positions){
+    if(removed>=maxRemove) break; const backup = puzzle[i]; puzzle[i]=0;
     const tmp = puzzle.slice();
-    let count=0;
-    (function countSolutions(g){
-      const ii=findEmpty(g); if(ii===-1){ count++; return; }
-      for(const v of [1,2,3,4,5,6,7,8,9]){
-        if(isValid(g,ii,v)){ g[ii]=v; countSolutions(g); if(count>1) return; g[ii]=0; }
-      }
-    })(tmp);
-    if(count>1) puzzle[i]=bak; else removed++;
+    if(countSolutions(tmp,2)===1){ removed++; } else { puzzle[i]=backup; }
   }
   return puzzle;
 }
 
-let solution = new Array(81).fill(0);
 function newPuzzle(){
   const full = generateFull();
   solution = full.slice();
@@ -288,27 +303,36 @@ function newPuzzle(){
   grid = puzzle.slice();
   given = grid.map(v=> v!==0);
   notes = Array.from({length:81},()=> new Set());
+  mistakes = 0; mistakesEl.textContent = '0';
   selected = grid.findIndex(v=> v===0); if(selected===-1) selected=0;
   render(); startTimer();
 }
 
+/* ===== Hints & Win Check ===== */
 function hint(){
+  // find an empty cell, fill with solution
   const empties = grid.map((v,i)=> v===0? i : -1).filter(i=> i!==-1);
   if(!empties.length) return;
   const i = empties[Math.floor(Math.random()*empties.length)];
-  grid[i] = solution[i]; notes[i].clear(); select(i); render(); checkWin();
+  grid[i] = solution[i]; given[i]=false; // Hilfe eintragen, bleibt änderbar
+  notes[i].clear(); select(i); render(); checkWin();
 }
+
 function checkWin(){
   if(grid.every((v,i)=> v===solution[i])){
+    stopTimer();
     cells.forEach(c=> c.style.background = 'color-mix(in oklab, var(--valid) 18%, transparent)');
     setTimeout(()=> alert('🎉 Gelöst! Stark gemacht.'), 10);
   }
 }
 
+/* ===== Hook up controls ===== */
 newBtn.addEventListener('click', newPuzzle);
 hintBtn.addEventListener('click', hint);
 
+/* Build and start */
 buildBoard(); newPuzzle();
 </script>
 </body>
 </html>
+
