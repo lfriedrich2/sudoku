@@ -265,3 +265,7 @@ themeToggle.addEventListener('click', () => {
   const mode = localStorage.getItem('sudoku-theme') || 'dark';
   setTheme(mode);
 })();
+
+// Event-Listener für Buttons am Ende setzen
+newBtn.addEventListener('click', newPuzzle);
+hintBtn.addEventListener('click', hint);
