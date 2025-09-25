@@ -8,6 +8,12 @@ const hintBtn = document.getElementById('hint');
 const mistakesEl = document.getElementById('mistakes');
 const timerEl = document.getElementById('timer');
 
+// Statistik-Elemente
+const statSolved = document.getElementById('stat-solved');
+const statBest = document.getElementById('stat-best');
+const statTotal = document.getElementById('stat-total');
+const statMistakes = document.getElementById('stat-mistakes');
+
 let cells = [];
 let given = new Array(81).fill(false);
 let grid = new Array(81).fill(0);
@@ -202,11 +208,40 @@ function checkWin(){
   if(grid.every((v,i)=> v===solution[i])){
     stopTimer();
     cells.forEach(c=> c.style.background = 'color-mix(in oklab, var(--valid) 18%, transparent)');
+    // Statistik speichern
+    const time = Math.floor((Date.now()-startTime)/1000);
+    saveStats({solvedInc:1, lastTime:time, lastMistakes:mistakes});
     setTimeout(()=> alert('🎉 Gelöst! Stark gemacht.'), 10);
   }
 }
 
-newBtn.addEventListener('click', newPuzzle);
-hintBtn.addEventListener('click', hint);
+function loadStats() {
+  const stats = JSON.parse(localStorage.getItem('sudoku-stats') || '{}');
+  statSolved.textContent = stats.solved || 0;
+  statBest.textContent = stats.best ? formatTime(stats.best) : '–';
+  statTotal.textContent = stats.total ? formatTime(stats.total) : '00:00';
+  statMistakes.textContent = stats.mistakes || 0;
+}
+
+function saveStats({solvedInc=0, lastTime=0, lastMistakes=0} = {}) {
+  const stats = JSON.parse(localStorage.getItem('sudoku-stats') || '{}');
+  stats.solved = (stats.solved || 0) + solvedInc;
+  if (lastTime > 0) {
+    if (!stats.best || lastTime < stats.best) stats.best = lastTime;
+    stats.total = (stats.total || 0) + lastTime;
+  }
+  stats.mistakes = (stats.mistakes || 0) + lastMistakes;
+  localStorage.setItem('sudoku-stats', JSON.stringify(stats));
+  loadStats();
+}
+
+function formatTime(secs) {
+  const m = String(Math.floor(secs/60)).padStart(2,'0');
+  const s = String(secs%60).padStart(2,'0');
+  return `${m}:${s}`;
+}
+
+// Nach dem Laden Statistiken anzeigen
+loadStats();
 
 buildBoard(); newPuzzle();
