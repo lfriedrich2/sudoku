@@ -46,3 +46,24 @@ h1{ margin:0 0 10px 0; font-size:20px; font-weight:800 }
 select{ background:rgba(255,255,255,.06); color:var(--text); border:1px solid rgba(255,255,255,.12); border-radius:10px; padding:8px }
 .stat{ padding:10px; border-radius:12px; border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.03) }
 .timer{ font-variant-numeric:tabular-nums }
+
+/* Light Mode Styles */
+body.light {
+  background: radial-gradient(65% 100% at 50% -20%, #bae6fd 0%, transparent 55%), #f1f5f9;
+  color: #222;
+}
+body.light .card { background: #fff; color: #222; border: 1px solid #e5e7eb; }
+body.light .board { background: #f1f5f9; border-color: #222; }
+body.light .cell { color: #222; border-color: #cbd5e1; background: #f8fafc; }
+body.light .cell.given { color: #64748b; }
+body.light .cell.selected { outline-color: #fbbf24; }
+body.light .cell.conflict { background: #fee2e2; }
+body.light .cell.same { background: #bae6fd; }
+body.light .cell .notes { color: #64748b; }
+body.light .btn { color: #222; background: linear-gradient(180deg,#38bdf8,#0ea5e9); }
+body.light .btn.secondary { background: transparent; color: #222; border: 1px solid #cbd5e1; }
+body.light .btn.warn { background: linear-gradient(180deg,#fde68a,#f59e0b); color: #222; }
+body.light .btn.err { background: linear-gradient(180deg,#fca5a5,#ef4444); color: #222; }
+body.light .stat { background: #f1f5f9; color: #222; border: 1px solid #e5e7eb; }
+body.light .pill { background: #e0e7ef; color: #64748b; border: 1px solid #cbd5e1; }
+body.light select { background: #e0e7ef; color: #222; border: 1px solid #cbd5e1; }

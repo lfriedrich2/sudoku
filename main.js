@@ -245,3 +245,21 @@ function formatTime(secs) {
 loadStats();
 
 buildBoard(); newPuzzle();
+
+// Theme-Umschalter
+const themeToggle = document.getElementById('theme-toggle');
+function setTheme(mode) {
+  document.body.classList.toggle('light', mode === 'light');
+  localStorage.setItem('sudoku-theme', mode);
+  themeToggle.textContent = mode === 'light' ? '☀️' : '🌙';
+}
+themeToggle.addEventListener('click', () => {
+  const isLight = document.body.classList.toggle('light');
+  localStorage.setItem('sudoku-theme', isLight ? 'light' : 'dark');
+  themeToggle.textContent = isLight ? '☀️' : '🌙';
+});
+// Beim Laden Theme setzen
+(function(){
+  const mode = localStorage.getItem('sudoku-theme') || 'dark';
+  setTheme(mode);
+})();
