@@ -88,12 +88,22 @@ function select(i){ selected = i; render(); }
 
 function inputNumber(n){
   if(selected===-1 || given[selected]) return;
+  const numBtn = document.querySelector('.btn.num[data-n="'+n+'"]');
   if(pencil){
     if(notes[selected].has(n)) notes[selected].delete(n); else notes[selected].add(n);
   } else {
     if(grid[selected]===n){ grid[selected]=0; }
-    else { grid[selected]=n; notes[selected].clear(); }
-    if(solution[selected] && n!==0 && n!==solution[selected]) mistakes++;
+    else {
+      grid[selected]=n; notes[selected].clear();
+      // Fehler-Feedback: Zahl ist falsch
+      if(solution[selected] && n!==0 && n!==solution[selected]) {
+        mistakes++;
+        if(numBtn) {
+          numBtn.classList.add('wrong');
+          setTimeout(()=>numBtn.classList.remove('wrong'), 350);
+        }
+      }
+    }
     mistakesEl.textContent = mistakes;
     for(const j of peersOf(selected)) notes[j].delete(n);
   }
