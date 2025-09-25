@@ -46,18 +46,6 @@ h1{ margin:0 0 10px 0; font-size:20px; font-weight:800 }
   box-shadow: 0 0 0 3px var(--acc, #38bdf8);
   outline: none;
 }
-.btn.num.wrong {
-  background: linear-gradient(180deg, var(--err, #ef4444), #dc2626) !important;
-  color: #fff !important;
-  animation: shake 0.2s linear 1;
-}
-@keyframes shake {
-  0% { transform: translateX(0); }
-  25% { transform: translateX(-4px); }
-  50% { transform: translateX(4px); }
-  75% { transform: translateX(-2px); }
-  100% { transform: translateX(0); }
-}
 .bar{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
 .pill{ background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); padding:8px 10px; border-radius:999px; font-size:13px; color:var(--mute) }
 select{ background:rgba(255,255,255,.06); color:var(--text); border:1px solid rgba(255,255,255,.12); border-radius:10px; padding:8px }
