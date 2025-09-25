@@ -72,3 +72,8 @@ body.light .btn.err { background: linear-gradient(180deg,#fca5a5,#ef4444); color
 body.light .stat { background: #f1f5f9; color: #222; border: 1px solid #e5e7eb; }
 body.light .pill { background: #e0e7ef; color: #64748b; border: 1px solid #cbd5e1; }
 body.light select { background: #e0e7ef; color: #222; border: 1px solid #cbd5e1; }
+.cell.input-error {
+  color: var(--err, #ef4444) !important;
+  font-weight: 900;
+  animation: shake 0.15s linear 1;
+}

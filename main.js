@@ -55,10 +55,18 @@ function render(){
   cells.forEach((cell,i)=>{
     cell.classList.toggle('selected', i===selected);
     cell.classList.toggle('given', given[i]);
-    cell.classList.remove('conflict','same');
+    cell.classList.remove('conflict','same','input-error');
     cell.innerHTML='';
     const v = grid[i];
-    if(v){ cell.textContent = v; }
+    if(v){
+      cell.textContent = v;
+      // Prüfe auf Konflikt (Zeile, Spalte, Block)
+      let hasConflict = false;
+      for(const j of peersOf(i)){
+        if(grid[j] === v) { hasConflict = true; break; }
+      }
+      if(hasConflict && !given[i]) cell.classList.add('input-error');
+    }
     else if(notes[i].size){
       const wrap = document.createElement('div'); wrap.className='notes';
       for(let n=1;n<=9;n++){
