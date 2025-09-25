@@ -1,174 +1,314 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sudoku – Browser Edition</title>
 
-  <title>Sudoku</title>
-  <meta name="description" content="Ein schnelles, hübsches Sudoku – offline spielbar und installierbar als App." />
+<!-- PWA -->
+<meta name="theme-color" content="#0f172a" />
+<link rel="manifest" href="/manifest.webmanifest" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon-180.png" />
+<link rel="icon" href="data:," />
 
-  <!-- PWA: Farben -->
-  <meta name="theme-color" content="#0f172a" />
-  <meta name="background-color" content="#ffffff" />
+<style>
+  :root{
+    --bg:#0f172a; --panel:#111827; --grid:#0b1220; --line:#1f2937; --text:#e5e7eb; --mute:#9ca3af; --acc:#38bdf8;
+    --valid:#22c55e; --warn:#f59e0b; --err:#ef4444; --sel:#fbbf24; --given:#94a3b8; --note:#64748b;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:radial-gradient(65% 100% at 50% -20%, #0ea5e9 0%, transparent 55%), var(--bg);
+    color:var(--text); font-family:ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;
+    min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px;
+  }
+  .app{ display:grid; grid-template-columns:minmax(300px,520px) 320px; gap:18px; width:min(1120px, 100%); }
+  @media (max-width: 980px){ .app{ grid-template-columns:1fr } }
+  .card{ background:var(--panel); border:1px solid rgba(255,255,255,.08); border-radius:16px; padding:14px; box-shadow:0 12px 30px rgba(0,0,0,.25) }
+  h1{ margin:0 0 10px 0; font-size:20px; font-weight:800 }
 
-  <!-- PWA: Manifest -->
-  <link rel="manifest" href="/manifest.webmanifest" />
+  /* Grid */
+  .board{ aspect-ratio:1/1; width:100%; background:linear-gradient(180deg, rgba(255,255,255,.02), transparent), var(--grid);
+          border-radius:12px; overflow:hidden; display:grid; grid-template-columns:repeat(9,1fr); grid-template-rows:repeat(9,1fr); border:4px solid var(--text); }
+  .cell{ position:relative; border:1px solid var(--line); display:flex; align-items:center; justify-content:center; cursor:pointer; user-select:none; font-weight:900; font-size:24px;}
+  .cell.given{ color:var(--given) }
+  .cell.selected{ outline:2px solid var(--sel); outline-offset:-2px; z-index:2 }
+  .cell.conflict{ background:color-mix(in oklab, var(--err) 20%, transparent); }
+  .cell.same{ background:color-mix(in oklab, var(--acc) 12%, transparent); }
+  .cell .notes{ position:absolute; inset:2px; display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr); gap:1px; font-size:12px; color:var(--note); font-weight:700; }
+  .note{ display:flex; align-items:center; justify-content:center; opacity:.85 }
 
-  <!-- iOS PWA: Standalone + Statusbar + Icon -->
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <link rel="apple-touch-icon" href="/icons/apple-touch-icon-180.png" />
+  /* Dicke Linien für 3×3 Boxen */
+  .cell{ border-right-width:1px; border-bottom-width:1px }
+  .cell:nth-child(9n+1){ border-left-width:3px }
+  .cell:nth-child(-n+9){ border-top-width:3px }
+  .cell:nth-child(3n){ border-right-width:3px }
+  .cell:nth-child(n+19):nth-child(-n+27),
+  .cell:nth-child(n+46):nth-child(-n+54){ border-bottom-width:3px }
 
-  <!-- Favicon: 404s unterdrücken -->
-  <link rel="icon" href="data:," />
+  /* Controls */
+  .controls{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+  .numpad{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px }
+  .btn{ appearance:none; border:none; border-radius:12px; padding:12px; cursor:pointer; font-weight:900; color:white; background:linear-gradient(180deg,#22d3ee,#06b6d4); box-shadow:0 10px 18px rgba(6,182,212,.35) }
+  .btn.secondary{ background:transparent; color:var(--text); border:1px solid rgba(255,255,255,.15) }
+  .btn.warn{ background:linear-gradient(180deg,#f59e0b,#d97706) }
+  .btn.err{ background:linear-gradient(180deg,#ef4444,#dc2626) }
+  .btn:disabled{ opacity:.6; cursor:not-allowed }
+  .bar{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .pill{ background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); padding:8px 10px; border-radius:999px; font-size:13px; color:var(--mute) }
+  select{ background:rgba(255,255,255,.06); color:var(--text); border:1px solid rgba(255,255,255,.12); border-radius:10px; padding:8px }
+  .stat{ padding:10px; border-radius:12px; border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.03) }
+  .timer{ font-variant-numeric:tabular-nums }
 
-  <!-- (Optional) Social Preview -->
-  <meta property="og:title" content="Sudoku" />
-  <meta property="og:description" content="Ein schnelles, hübsches Sudoku – offline spielbar und installierbar als App." />
-  <meta property="og:type" content="website" />
-
-  <!-- Basis-Styles (leicht, anpassbar/entfernbar) -->
-  <style>
-    :root {
-      color-scheme: light dark;
-      --bg: #0b1220;
-      --fg: #e5e7eb;
-      --card: #111827;
-      --accent: #22c55e;
-    }
-    @media (prefers-color-scheme: light) {
-      :root {
-        --bg: #f8fafc;
-        --fg: #0f172a;
-        --card: #ffffff;
-        --accent: #0ea5e9;
-      }
-    }
-    html, body {
-      height: 100%;
-      margin: 0;
-      padding: 0;
-    }
-    body {
-      background: var(--bg);
-      color: var(--fg);
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-    }
-    .app {
-      min-height: 100%;
-      display: grid;
-      grid-template-rows: auto 1fr auto;
-    }
-    header {
-      padding: 16px clamp(16px, 3vw, 32px);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background: transparent;
-      position: sticky;
-      top: 0;
-      backdrop-filter: blur(6px);
-    }
-    h1 {
-      font-size: clamp(20px, 2.6vw, 28px);
-      margin: 0;
-      letter-spacing: .3px;
-    }
-    main {
-      padding: 16px clamp(16px, 3vw, 32px) max(16px, env(safe-area-inset-bottom));
-      display: grid;
-      place-items: center;
-    }
-    .card {
-      width: min(92vw, 720px);
-      background: var(--card);
-      border-radius: 16px;
-      padding: clamp(16px, 3vw, 28px);
-      box-shadow: 0 10px 30px rgba(0,0,0,.25);
-    }
-    footer {
-      padding: 16px clamp(16px, 3vw, 32px) calc(16px + env(safe-area-inset-bottom));
-      opacity: .8;
-      font-size: 14px;
-      text-align: center;
-    }
-    .ios-install-hint {
-      display: none;
-      text-align: center;
-      padding: 8px 12px;
-      margin: 8px 0 0;
-      border: 1px dashed currentColor;
-      border-radius: 12px;
-      font-size: 14px;
-      opacity: .8;
-    }
-    /* Nur zeigen, wenn NICHT im Standalone/Install-Modus */
-    @media all and (display-mode: browser) {
-      .ios-install-hint { display: block; }
-    }
-
-    /* Platzhalter für dein Sudoku-Grid – entferne, wenn du eigenes CSS nutzt */
-    .placeholder {
-      border: 2px dashed rgba(255,255,255,.2);
-      border-radius: 12px;
-      padding: 24px;
-      text-align: center;
-      opacity: .8;
-    }
-  </style>
+  /* Footer */
+  footer{ margin-top:16px; text-align:center; opacity:.8; font-size:14px }
+</style>
 </head>
 <body>
   <div class="app">
-    <header>
+    <div class="card">
       <h1>Sudoku</h1>
-      <!-- (Optional) Button/Linkleiste -->
-      <!-- <nav><a href="/privacy.html">Datenschutz</a></nav> -->
-    </header>
-
-    <main>
-      <div class="card">
-        <!-- iOS/Android Install-Hinweis (wird im Standalone-Modus automatisch ausgeblendet) -->
-        <div class="ios-install-hint">
-          Tipp: In Safari <strong>Teilen</strong> → <strong>Zum Home-Bildschirm</strong>, um die App zu installieren.
-        </div>
-
-        <!-- 🔽🔽🔽 HIER DEIN SUDOKU EINHÄNGEN 🔽🔽🔽
-             - Wenn du bereits HTML für das Brett hast, füge es hier ein.
-             - Oder binde deine Dateien wie <link rel="stylesheet" href="/styles.css"> und <script src="/main.js" defer></script> ein. -->
-        <div id="app" class="placeholder">
-          <p><strong>Sudoku-App</strong></p>
-          <p>Ersetze diesen Platzhalter durch dein echtes Sudoku-Markup/Script.</p>
-        </div>
-        <!-- 🔼🔼🔼 ENDE DEIN SUDOKU 🔼🔼🔼 -->
+      <div id="board" class="board" role="grid" aria-label="Sudoku"></div>
+    </div>
+    <div class="card">
+      <div class="bar" style="margin-bottom:10px">
+        <label>Schwierigkeit:</label>
+        <select id="difficulty">
+          <option value="easy">Leicht</option>
+          <option value="medium" selected>Mittel</option>
+          <option value="hard">Schwer</option>
+          <option value="expert">Experte</option>
+        </select>
+        <button id="new" class="btn">🆕 Neues Spiel</button>
       </div>
-    </main>
-
-    <footer>
-      © <span id="year"></span> Sudoku • Offline spielbar • PWA
-    </footer>
+      <div class="controls" style="margin-bottom:10px">
+        <button class="btn" id="pencil">✏️ Notizen</button>
+        <button class="btn secondary" id="erase">⌫ Löschen</button>
+        <button class="btn secondary" id="hint">💡 Hinweis</button>
+      </div>
+      <div class="numpad" style="margin-bottom:10px">
+        <button class="btn num" data-n="1">1</button>
+        <button class="btn num" data-n="2">2</button>
+        <button class="btn num" data-n="3">3</button>
+        <button class="btn num" data-n="4">4</button>
+        <button class="btn num" data-n="5">5</button>
+        <button class="btn num" data-n="6">6</button>
+        <button class="btn num" data-n="7">7</button>
+        <button class="btn num" data-n="8">8</button>
+        <button class="btn num" data-n="9">9</button>
+      </div>
+      <div class="bar">
+        <span class="pill">Tastatur: Ziffern, Backspace, Pfeile</span>
+        <span class="pill">P: Notizen an/aus</span>
+      </div>
+      <div style="margin-top:10px; display:flex; gap:10px">
+        <div class="stat">Fehler: <span id="mistakes">0</span></div>
+        <div class="stat timer">⏱️ <span id="timer">00:00</span></div>
+      </div>
+      <footer>© <span id="year"></span> Sudoku • Offline spielbar • PWA</footer>
+    </div>
   </div>
 
-  <noscript>Bitte aktiviere JavaScript, um Sudoku zu spielen.</noscript>
+<script>
+/* ===== PWA Helfer ===== */
+document.getElementById('year').textContent = new Date().getFullYear();
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(console.error);
+  });
+}
 
-  <!-- (Optional) Deine Assets – auskommentiert als Vorlage -->
-  <!-- <link rel="preload" href="/styles.css" as="style" />
-  <link rel="stylesheet" href="/styles.css" />
-  <script src="/main.js" defer></script> -->
+/* =====================
+   Sudoku Core: Generator, Solver, UI (Ein-Datei)
+   ===================== */
+const boardEl = document.getElementById('board');
+const diffSel = document.getElementById('difficulty');
+const newBtn = document.getElementById('new');
+const pencilBtn = document.getElementById('pencil');
+const eraseBtn = document.getElementById('erase');
+const hintBtn = document.getElementById('hint');
+const mistakesEl = document.getElementById('mistakes');
+const timerEl = document.getElementById('timer');
 
-  <!-- Service Worker registrieren -->
-  <script>
-    // Jahreszahl im Footer
-    document.getElementById('year').textContent = new Date().getFullYear();
+let cells = [];
+let given = new Array(81).fill(false);
+let grid = new Array(81).fill(0);
+let solution = new Array(81).fill(0);
+let notes = Array.from({length:81},()=> new Set());
+let selected = -1;
+let pencil = false;
+let mistakes = 0;
+let timerId = null, startTime = null;
 
-    // SW-Registrierung
-    if ("serviceWorker" in navigator) {
-      window.addEventListener("load", () => {
-        navigator.serviceWorker.register("/sw.js")
-          .catch(err => console.error("SW registration failed:", err));
-      });
+const R = idx => Math.floor(idx/9);
+const C = idx => idx%9;
+function peersOf(i){
+  const r = R(i), c = C(i);
+  const s = new Set();
+  for(let k=0;k<9;k++){ s.add(r*9+k); s.add(k*9+c); }
+  const br = Math.floor(r/3)*3, bc = Math.floor(c/3)*3;
+  for(let rr=br;rr<br+3;rr++) for(let cc=bc;cc<bc+3;cc++) s.add(rr*9+cc);
+  s.delete(i); return [...s];
+}
+
+function buildBoard(){
+  boardEl.innerHTML=''; cells = [];
+  for(let r=0;r<9;r++){
+    for(let c=0;c<9;c++){
+      const i = r*9+c;
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.setAttribute('role','gridcell');
+      cell.setAttribute('aria-label',`Zelle ${r+1},${c+1}`);
+      cell.addEventListener('click', ()=> select(i));
+      cells.push(cell); boardEl.appendChild(cell);
     }
-  </script>
+  }
+}
+
+function render(){
+  cells.forEach((cell,i)=>{
+    cell.classList.toggle('selected', i===selected);
+    cell.classList.toggle('given', given[i]);
+    cell.classList.remove('conflict','same');
+    cell.innerHTML='';
+    const v = grid[i];
+    if(v){ cell.textContent = v; }
+    else if(notes[i].size){
+      const wrap = document.createElement('div'); wrap.className='notes';
+      for(let n=1;n<=9;n++){
+        const s = document.createElement('div'); s.className='note'; s.textContent = notes[i].has(n)? n:''; wrap.appendChild(s);
+      }
+      cell.appendChild(wrap);
+    }
+  });
+  if(selected!==-1 && grid[selected]){
+    const val = grid[selected];
+    cells.forEach((cell,i)=>{ if(grid[i]===val) cell.classList.add('same'); });
+  }
+  updateConflicts();
+}
+
+function updateConflicts(){
+  cells.forEach(c=>c.classList.remove('conflict'));
+  for(let i=0;i<81;i++){
+    if(!grid[i]) continue;
+    for(const j of peersOf(i)){
+      if(grid[j]===grid[i]){ cells[i].classList.add('conflict'); cells[j].classList.add('conflict'); }
+    }
+  }
+}
+
+function select(i){ selected = i; render(); }
+
+function inputNumber(n){
+  if(selected===-1 || given[selected]) return;
+  if(pencil){
+    if(notes[selected].has(n)) notes[selected].delete(n); else notes[selected].add(n);
+  } else {
+    if(grid[selected]===n){ grid[selected]=0; }
+    else { grid[selected]=n; notes[selected].clear(); }
+  }
+  render(); checkWin();
+}
+
+function erase(){
+  if(selected===-1 || given[selected]) return;
+  grid[selected]=0; notes[selected].clear(); render();
+}
+
+function togglePencil(){ pencil=!pencil; pencilBtn.classList.toggle('secondary', pencil); }
+
+function keyHandler(e){
+  if(e.key==='p' || e.key==='P'){ togglePencil(); return; }
+  if(selected===-1) return;
+  if(e.key>='1'&&e.key<='9'){ inputNumber(parseInt(e.key,10)); }
+  else if(e.key==='Backspace' || e.key==='Delete'){ erase(); }
+  else if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)){
+    e.preventDefault();
+    let r=R(selected), c=C(selected);
+    if(e.key==='ArrowUp') r=(r+8)%9; if(e.key==='ArrowDown') r=(r+1)%9; if(e.key==='ArrowLeft') c=(c+8)%9; if(e.key==='ArrowRight') c=(c+1)%9;
+    select(r*9+c);
+  }
+}
+document.addEventListener('keydown', keyHandler);
+[...document.querySelectorAll('.num')].forEach(b=> b.addEventListener('click', ()=> inputNumber(parseInt(b.dataset.n,10))));
+eraseBtn.addEventListener('click', erase);
+pencilBtn.addEventListener('click', togglePencil);
+
+/* Timer (optional – aktuell nur Anzeige) */
+function startTimer(){ /* kannst du wieder aktivieren, wenn du möchtest */ }
+
+/* Generator & Solver (vereinfacht) */
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]] } return a; }
+function Ridx(i){ return Math.floor(i/9) } function Cidx(i){ return i%9 }
+function isValid(g, pos, val){
+  const r=Ridx(pos), c=Cidx(pos);
+  for(let k=0;k<9;k++){ if(g[r*9+k]===val) return false; if(g[k*9+c]===val) return false; }
+  const br=Math.floor(r/3)*3, bc=Math.floor(c/3)*3;
+  for(let rr=br; rr<br+3; rr++) for(let cc=bc; cc<bc+3; cc++) if(g[rr*9+cc]===val) return false;
+  return true;
+}
+function findEmpty(g){ for(let i=0;i<81;i++) if(!g[i]) return i; return -1; }
+function solve(g){
+  const i=findEmpty(g); if(i===-1) return true;
+  for(const v of shuffle([1,2,3,4,5,6,7,8,9])){ if(isValid(g,i,v)){ g[i]=v; if(solve(g)) return true; g[i]=0; } }
+  return false;
+}
+function generateFull(){ const g=new Array(81).fill(0); solve(g); return g; }
+function digHoles(full, difficulty){
+  const targets = { easy: 40, medium: 32, hard: 26, expert: 22 };
+  const clues = targets[difficulty] ?? 32;
+  const puzzle = full.slice();
+  const pos = shuffle([...Array(81).keys()]);
+  let removed = 0;
+  for(const i of pos){
+    if(81 - (removed+1) < clues) break;
+    const bak = puzzle[i]; puzzle[i]=0;
+    const tmp = puzzle.slice();
+    let count=0;
+    (function countSolutions(g){
+      const ii=findEmpty(g); if(ii===-1){ count++; return; }
+      for(const v of [1,2,3,4,5,6,7,8,9]){
+        if(isValid(g,ii,v)){ g[ii]=v; countSolutions(g); if(count>1) return; g[ii]=0; }
+      }
+    })(tmp);
+    if(count>1) puzzle[i]=bak; else removed++;
+  }
+  return puzzle;
+}
+
+let solution = new Array(81).fill(0);
+function newPuzzle(){
+  const full = generateFull();
+  solution = full.slice();
+  const puzzle = digHoles(full, diffSel.value);
+  grid = puzzle.slice();
+  given = grid.map(v=> v!==0);
+  notes = Array.from({length:81},()=> new Set());
+  selected = grid.findIndex(v=> v===0); if(selected===-1) selected=0;
+  render(); startTimer();
+}
+
+function hint(){
+  const empties = grid.map((v,i)=> v===0? i : -1).filter(i=> i!==-1);
+  if(!empties.length) return;
+  const i = empties[Math.floor(Math.random()*empties.length)];
+  grid[i] = solution[i]; notes[i].clear(); select(i); render(); checkWin();
+}
+function checkWin(){
+  if(grid.every((v,i)=> v===solution[i])){
+    cells.forEach(c=> c.style.background = 'color-mix(in oklab, var(--valid) 18%, transparent)');
+    setTimeout(()=> alert('🎉 Gelöst! Stark gemacht.'), 10);
+  }
+}
+
+newBtn.addEventListener('click', newPuzzle);
+hintBtn.addEventListener('click', hint);
+
+buildBoard(); newPuzzle();
+</script>
 </body>
 </html>
